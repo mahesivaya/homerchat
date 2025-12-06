@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Welcome to HomerChat{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="chat-layout">
+
+    <!-- ========== SIDEBAR ========== -->
+    <div class="chat-sidebar">
+        <h3>Create Room</h3>
+
+        <div class="create-room-box">
+            <input id="new-room-name" type="text" placeholder="Room name">
+            <button onclick="createRoom()">+</button>
+        </div>
+
+        <h3>Rooms</h3>
+        <input id="room-search" type="text" placeholder="Search rooms..." class="search-bar">
+        <div id="room-list"></div>
+
+        <hr style="margin:15px 0;">
+
+        <h3>Users</h3>
+        <input id="user-search" type="text" placeholder="Search users..." class="search-bar">
+        <div id="user-list"></div>
+    </div>
+
+    <!-- HIDDEN UNTIL A ROOM IS SELECTED -->
+    <button id="show-users-btn" class="info-btn hidden">👥 Room Info</button>
+
+    <!-- ========== MAIN CHAT AREA ========== -->
+    <div class="chat-wrapper">
+
+        <h2 id="chat-header" class="chat-title">Clinic Chat Room</h2>
+
+        <div id="join-banner" class="join-banner hidden">
+            <button onclick="joinActiveRoom()">Join this room to view & send messages</button>
+        </div>
+
+        <div id="chat-log" class="chat-box hidden"></div>
+
+<div class="chat-input-row">
+    <input id="chat-message-input" 
+           type="text" 
+           placeholder="Type a message..."
+           class="chat-input">
+
+    <button id="chat-message-submit" 
+            class="chat-send-btn">
+        Send
+    </button>
+</div>
+
+    </div>
+
+    <!-- ========== ROOM INFO PANEL ========== -->
+    <div id="room-info-panel" class="room-info hidden">
+        <h3>Room Info</h3>
+        <p><b>Created by:</b> <span id="room-created-by"></span></p>
+
+        <p><b>Users:</b></p>
+        <ul id="room-users-combined"></ul>
+
+        <button onclick="hideRoomInfo()" class="close-info">Close</button>
+    </div>
+
+</div>
+
+<style>
+/* --- CLEAN MINIFIED CSS --- */
+.chat-input-row {display: flex; gap: 10px; align-items: center;}
+.chat-input {flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none;}
+.chat-input:focus {border-color: #4f46e5; /* Indigo */box-shadow: 0 0 4px rgba(79, 70, 229, 0.3);}
+.chat-send-btn {background: #4f46e5; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px;}
+.chat-send-btn:hover {background: #4338ca;}
+
+.room-info{position:fixed;top:0;right:0;width:260px;height:100vh;padding:20px;background:#fff;border-left:2px solid #ccc;box-shadow:-2px 0 8px rgba(0,0,0,.1);z-index:999;transition:.3s;}
+.room-info.hidden{transform:translateX(260px);}
+.info-btn{padding:6px 12px;background:#4f46e5;color:#fff;border:none;margin-bottom:12px;border-radius:6px;cursor:pointer;height:40px;}
+.hidden{display:none;}
+.close-info{margin-top:20px;background:#ef4444;color:#fff;border:none;padding:8px;width:100%;border-radius:6px;cursor:pointer;}
+.chat-layout{display:flex;height:calc(100vh - 160px);max-width:1200px;margin:20px auto;gap:20px;}
+.chat-sidebar{width:260px;background:#fff;border-radius:8px;padding:12px;box-shadow:0 4px 12px rgba(0,0,0,.08);height:100%;overflow-y:auto;}
+.search-bar{width:100%;padding:6px 8px;border:1px solid #999;margin-bottom:8px;border-radius:6px;font-size:14px;}
+.room-item,.user-btn{background:#eef2ff;padding:10px;border-radius:6px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;width:100%;border:none;text-align:left;font-size:15px;}
+.room-item:hover,.user-btn:hover{background:#d0dcff;}
+.chat-wrapper{flex:1;padding:20px;background:#fff;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.1);height:100%;display:flex;flex-direction:column;}
+.chat-box{border:1px solid #ccc;padding:12px;flex:1;overflow-y:auto;background:#f5f7fb;border-radius:6px;margin-bottom:15px;}
+.message{padding:8px 10px;background:#e4eaff;border-radius:6px;margin-bottom:10px;}
+.join-banner{background:#fff3cd;padding:10px;border-radius:8px;margin-bottom:10px;border:1px solid #ffeeba;text-align:center;}
+</style>
+
+
+<script>
+// ======================================================
+//              GLOBAL VARIABLES
+// ======================================================
+let activeMode = "room";
+let activeTarget = "chatapp";
+let chatSocket = null;
+let allRooms = [];
+let allUsers = [];
+
+const username = "{{ request.user.username }}";
+const scheme = location.protocol === "https:" ? "wss" : "ws";
+
+const chatLog = document.getElementById("chat-log");
+const chatHeader = document.getElementById("chat-header");
+const joinBanner = document.getElementById("join-banner");
+const msgInput = document.getElementById("chat-message-input");
+const msgBtn = document.getElementById("chat-message-submit");
+const roomInfoBtn = document.getElementById("show-users-btn");
+
+
+// ======================================================
+//                 JSON FETCH WRAPPER
+// ======================================================
+function jsonFetch(url, options){
+    return fetch(url, options)
+        .then(r => r.text())
+        .then(t => {
+            try { return JSON.parse(t); }
+            catch(e){ console.error("Invalid JSON:", t); throw e; }
+        });
+}
+
+
+// ======================================================
+//                   ROOM LIST
+// ======================================================
+function loadRooms(){
+    jsonFetch("/chat/rooms/").then(data=>{
+        allRooms = data;
+        renderRooms();
+    });
+}
+
+function renderRooms(){
+    const term = document.getElementById("room-search").value.toLowerCase();
+    const list = document.getElementById("room-list");
+    list.innerHTML = "";
+
+    allRooms
+      .filter(r => r.name.toLowerCase().includes(term))
+      .forEach(r => {
+
+        const joinBtn = r.is_user
+            ? "" 
+            : `<button onclick="joinRoomFromList('${r.name}')">Join</button>`;
+
+        list.innerHTML += `
+            <div class="room-item">
+                <span onclick="switchRoom('${r.name}')">${r.name}</span>
+                ${joinBtn}
+            </div>`;
+      });
+}
+
+
+// ======================================================
+//                  JOIN ROOM HANDLERS
+// ======================================================
+function joinRoomFromList(room){
+    jsonFetch(`/chat/rooms/join/${room}/`).then(()=>{
+        loadRooms();
+        switchRoom(room);
+    });
+}
+
+function joinActiveRoom(){
+    jsonFetch(`/chat/rooms/join/${activeTarget}/`).then(()=>{
+        loadRooms();
+        enableChat();
+        loadRoomHistory(activeTarget);
+    });
+}
+
+
+// ======================================================
+//                  USER LIST
+// ======================================================
+function loadUsers(){
+    jsonFetch("/chat/users/").then(data=>{
+        allUsers = data.filter(u => u !== username);
+        renderUsers();
+    });
+}
+
+function renderUsers(){
+    const term = document.getElementById("user-search").value.toLowerCase();
+    const list = document.getElementById("user-list");
+    list.innerHTML = "";
+
+    allUsers
+        .filter(u => u.toLowerCase().includes(term))
+        .forEach(u => {
+            list.innerHTML += `
+                <button class="user-btn" onclick="startDM('${u}')">${u}</button>
+            `;
+        });
+}
+
+
+// ======================================================
+//               SWITCH ROOM
+// ======================================================
+function switchRoom(room){
+    activeMode="room";
+    activeTarget=room.toLowerCase();
+    chatHeader.innerText=`Room: ${activeTarget}`;
+
+    roomInfoBtn.classList.remove("hidden");
+
+    jsonFetch("/chat/rooms/").then(rList=>{
+        const rm = rList.find(x => x.name === room);
+
+        if(rm && rm.is_user){
+            enableChat();
+            loadRoomHistory(activeTarget);
+        } else {
+            disableChat();
+        }
+        connectWS();
+    });
+}
+
+
+// ======================================================
+//             ENABLE / DISABLE CHAT UI
+// ======================================================
+function disableChat(){
+    joinBanner.classList.remove("hidden");
+    chatLog.classList.add("hidden");
+    msgInput.disabled = true;
+    msgBtn.disabled = true;
+}
+
+function enableChat(){
+    joinBanner.classList.add("hidden");
+    chatLog.classList.remove("hidden");
+    msgInput.disabled = false;
+    msgBtn.disabled = false;
+}
+
+
+// ======================================================
+//                     HISTORY
+// ======================================================
+function loadRoomHistory(room){
+    jsonFetch(`/chat/history/${room}/`).then(msgs=>{
+        chatLog.innerHTML="";
+        msgs.forEach(m=>{
+            chatLog.innerHTML+=`<div class="message"><b>${m.username}:</b> ${m.message}</div>`;
+        });
+        chatLog.scrollTop = chatLog.scrollHeight;
+    });
+}
+
+function loadDMHistory(user){
+    jsonFetch(`/chat/dm/history/${user}/`).then(msgs=>{
+        chatLog.innerHTML="";
+        msgs.forEach(m=>{
+            chatLog.innerHTML+=`<div class="message"><b>${m.username}:</b> ${m.message}</div>`;
+        });
+        chatLog.scrollTop = chatLog.scrollHeight;
+    });
+}
+
+
+// ======================================================
+//                       DM MODE
+// ======================================================
+function startDM(user){
+    activeMode="dm";
+    activeTarget=user.toLowerCase();
+    chatHeader.innerText="DM with "+activeTarget;
+
+    roomInfoBtn.classList.add("hidden");     // hide room info button in DM mode
+
+    enableChat();
+    loadDMHistory(activeTarget);
+    connectWS();
+}
+
+
+// ======================================================
+//                     WEBSOCKET
+// ======================================================
+function connectWS(){
+    if(chatSocket) chatSocket.close();
+
+    const wsUrl =
+        activeMode==="room"
+        ? `${scheme}://${location.hostname}:8000/ws/chat/${activeTarget}/`
+        : `${scheme}://${location.hostname}:8000/ws/dm/${activeTarget}/`;
+
+    chatSocket = new WebSocket(wsUrl);
+
+    chatSocket.onmessage = e => {
+        const d = JSON.parse(e.data);
+        if(d.message){
+            chatLog.innerHTML += `<div class="message"><b>${d.username}:</b> ${d.message}</div>`;
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+    };
+}
+
+
+// ======================================================
+//                   SEND MESSAGE
+// ======================================================
+function sendMessage(){
+    if(!msgInput.value.trim() || !chatSocket || chatSocket.readyState !== 1) return;
+    chatSocket.send(JSON.stringify({message:msgInput.value.trim(), username}));
+    msgInput.value="";
+}
+
+msgBtn.onclick = sendMessage;
+msgInput.onkeyup = e => e.key==="Enter" && sendMessage();
+
+
+// ======================================================
+//                   CREATE ROOM
+// ======================================================
+function createRoom(){
+    const name=document.getElementById("new-room-name").value.trim();
+    if(!name) return alert("Room name required");
+
+    jsonFetch("/chat/rooms/create/",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({name})
+    }).then(()=>{
+        loadRooms();
+        switchRoom(name);
+    });
+}
+
+
+// ======================================================
+//                ROOM INFO PANEL
+// ======================================================
+document.getElementById("show-users-btn").onclick = ()=>{
+    jsonFetch(`/chat/room/info/${activeTarget}/`).then(data=>{
+        const panel = document.getElementById("room-info-panel");
+
+        document.getElementById("room-created-by").innerText = data.created_by || "Unknown";
+
+        const active = new Set(data.users_active);
+        const all = new Set(data.users_all);
+        const combined = new Set([...active, ...all]);
+
+        document.getElementById("room-users-combined").innerHTML =
+            [...combined].map(u =>
+                `<li>${active.has(u) ? "🟢" : "⚪"} ${u}</li>`
+            ).join("");
+
+        panel.classList.remove("hidden");
+    });
+};
+
+function hideRoomInfo(){
+    document.getElementById("room-info-panel").classList.add("hidden");
+}
+
+
+// ======================================================
+//                      INIT
+// ======================================================
+window.onload = function(){
+    loadRooms();
+    loadUsers();
+    disableChat();
+    chatHeader.innerText = "Select a room…";
+
+    document.getElementById("room-search").oninput = renderRooms;
+    document.getElementById("user-search").oninput = renderUsers;
+};
+</script>
+
+{% endblock %}

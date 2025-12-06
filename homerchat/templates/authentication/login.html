@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Login{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2>Login</h2>
+
+    <form method="POST">
+        {% csrf_token %}
+        <label>Username</label>
+        <input type="text" name="username" required>
+
+        <label>Password</label>
+        <input type="password" name="password" required>
+
+        <button type="submit">Login</button>
+
+        <p class="switch-link">
+            <a href="{% url 'register' %}">Create an account</a>
+        </p>
+    </form>
+</div>
+{% endblock %}

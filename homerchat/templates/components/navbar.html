@@ -1,0 +1,25 @@
+{% load static %}
+<nav class="navbar">
+    <div class="left">
+
+        {% if user.is_authenticated %}
+            <!-- LOGGED IN → redirect to user home -->
+            <a href="{% url 'user_home' %}">🏠 Home</a>
+        {% else %}
+            <!-- LOGGED OUT → redirect to project landing page -->
+            <a href="{% url 'project_home' %}">🏠 Home</a>
+        {% endif %}
+
+    </div>
+
+    <div class="right">
+        {% if user.is_authenticated %}
+            <span>Hello, {{ user.username }}</span>
+            <a href="{% url 'chatapp' %}">Chat</a>
+            <a href="{% url 'logout' %}">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}">Login</a>
+            <a href="{% url 'register' %}">Register</a>
+        {% endif %}
+    </div>
+</nav>

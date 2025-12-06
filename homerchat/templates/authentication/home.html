@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Welcome to HomerChat{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+    <div class="hero-text">
+        <h1>Welcome to HomerChat</h1>
+        <p>Fast. Secure. Real-time messaging for everyone.</p>
+
+        {% if not user.is_authenticated %}
+        <div class="hero-buttons">
+            <a href="/auth/login/" class="hero-btn login">Login</a>
+            <a href="/auth/register/" class="hero-btn register">Register</a>
+        </div>
+        {% else %}
+        <div class="hero-buttons">
+            <a href="/chat/" class="hero-btn login">Go to Chat</a>
+        </div>
+        {% endif %}
+    </div>
+    <img src="{% static 'images/homerbird.png' %}" class="hero-img">
+</div>
+
+{% endblock %}
