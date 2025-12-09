@@ -1,0 +1,56 @@
+/* static/css/register.css */
+
+.auth-container {
+    width: 420px;
+    margin: 70px auto;
+    background: white;
+    padding: 28px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.auth-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #111827;
+}
+
+.auth-container form label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.auth-container input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-bottom: 16px;
+    font-size: 15px;
+}
+
+.auth-container input:focus {
+    border-color: #16a34a;
+    outline: none;
+}
+
+.auth-container button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    background: #16a34a;
+    color: white;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.auth-container button:hover {
+    background: #15803d;
+}
+
+.switch-link {
+    text-align: center;
+    margin-top: 10px;
+}

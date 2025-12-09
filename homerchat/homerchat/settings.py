@@ -26,7 +26,13 @@ SECRET_KEY = 'django-insecure-on-bh9+u-s(+(s*5ge)!m-cli#i0c-4x*fh77gb4a(t!(jmany
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    "homerchat.com",
+    "www.homerchat.com",
+    "35.153.143.170",
+    "localhost",
+    "127.0.0.1"
+]
 
 
 # Application definition
@@ -49,6 +55,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'homerchat.middleware.RequestLoggingMiddleware',
+    'homerchat.middleware.APILoggingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -65,6 +73,12 @@ ROOT_URLCONF = 'homerchat.urls'
 # LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/auth/home/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
+
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://homerchat.com",
+    "https://www.homerchat.com",
+]
 
 
 TEMPLATES = [
@@ -89,17 +103,17 @@ ASGI_APPLICATION = "homerchat.asgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'homerchat',
-        'USER': 'homermahesh',
-        'PASSWORD': 'J@ishiv!199',
-        'HOST': 'localhost',
+        'NAME': 'homerchatdb',
+        'USER': 'postgres',
+        'PASSWORD': 'JaishivG!199',
+        'HOST': 'homerchatdb.c12uyc8448br.us-east-1.rds.amazonaws.com',
         'PORT': '5432',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -141,3 +155,38 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+
+    "formatters": {
+        "main": {
+            "format": "[{levelname}] {asctime} — {message}",
+            "style": "{",
+        }
+    },
+
+    "handlers": {
+        "request_file": {
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs/request_logs.log"),
+            "formatter": "main",
+        }
+    },
+
+    "loggers": {
+        "request_logger": {    # MUST MATCH getLogger("request_logger")
+            "handlers": ["request_file"],
+            "level": "INFO",
+            "propagate": False,
+        }
+    }
+}
+
