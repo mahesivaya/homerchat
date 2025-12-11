@@ -15,6 +15,7 @@
         <p>Fast. Secure. Real-time messaging for everyone.</p>
     </div>
     <img src="{% static 'images/homerbird.png' %}" class="hero-img">
+    <img src="{{ request.user.userprofile.profile_image.url }}" width="60">
 </div>
 
 {% endblock %}
