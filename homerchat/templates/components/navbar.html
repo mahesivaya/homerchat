@@ -12,6 +12,12 @@
 
     </div>
 
+    {% if user.userprofile.profile_image %}
+        <img src="{{ user.userprofile.profile_image.url }}" width="50" height="50">
+    {% else %}
+        <img src="/media/profile_images/default.jpg" width="50" height="50">
+    {% endif %}
+
     <div class="right">
         {% if user.is_authenticated %}
             <span>Hello, {{ user.username }}</span>

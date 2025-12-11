@@ -15,12 +15,9 @@
     window.CHAT_USERNAME = "{{ request.user.username }}";
 </script>
 
-<!-- Chat JS -->
-<script src="{% static 'js/chatapp.js' %}"></script>
-
 <div class="chat-layout">
 
-    <!-- ========== LEFT SIDEBAR ========== -->
+    <!-- ===================== LEFT SIDEBAR ===================== -->
     <div class="chat-sidebar">
 
         <h3>Create Room</h3>
@@ -42,27 +39,28 @@
 
     </div>
 
-    <!-- ========== MAIN CHAT AREA ========== -->
+
+    <!-- ===================== MAIN CHAT AREA ===================== -->
     <div class="chat-wrapper">
 
         <h2 id="chat-header" class="chat-title">Chat</h2>
 
-        <!-- Default first-time screen -->
+        <!-- Welcome screen -->
         <div id="welcome-text" class="welcome-box">
             👋 Welcome to HomerChat!
             <br>
             Select a room or user from the sidebar to begin chatting.
         </div>
 
-        <!-- Only shows when user hasn't joined a room -->
+        <!-- Shown only if user is NOT in room -->
         <div id="join-banner" class="join-banner hidden">
             <button id="join-room-btn">Join this room</button>
         </div>
 
-        <!-- Chat log -->
+        <!-- Chat messages -->
         <div id="chat-log" class="chat-box hidden"></div>
 
-        <!-- Input row -->
+        <!-- Chat input -->
         <div id="chat-input-row" class="chat-input-row hidden">
             <input id="chat-message-input" type="text" placeholder="Type a message..." class="chat-input">
             <button id="chat-message-submit" class="chat-send-btn">Send</button>
@@ -70,19 +68,24 @@
 
     </div>
 
-    <!-- ========== ROOM INFO PANEL ========== -->
+
+    <!-- ===================== ROOM INFO PANEL ===================== -->
     <div id="room-info-panel" class="room-info hidden">
+
         <h3>Room Info</h3>
 
         <p><b>Created by:</b> <span id="room-created-by"></span></p>
 
-        <p><b>Users:</b></p>
+        <p><b>Users in room:</b></p>
         <ul id="room-users-combined"></ul>
 
         <button id="close-info-btn" class="close-info">Close</button>
     </div>
 
 </div>
+
+<!-- Chat JS (loaded at the end to avoid DOM issues) -->
+<script src="{% static 'js/chatapp.js' %}"></script>
 
 {% endblock %}
 

@@ -1,16 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
 
     // ======================================================
-    // GLOBAL VARIABLES
+    // GLOBAL STATE
     // ======================================================
-    let activeMode = null;     // "room" or "dm"
-    let activeTarget = null;   // room name or username
+    let activeMode = null;          // "room" | "dm"
+    let activeTarget = null;        // room_name | username
     let chatSocket = null;
 
     const username = window.CHAT_USERNAME;
     const scheme = location.protocol === "https:" ? "wss" : "ws";
 
-    // DOM references
+    // DOM refs
     const chatHeader = document.getElementById("chat-header");
     const chatLog = document.getElementById("chat-log");
     const welcomeBox = document.getElementById("welcome-text");
@@ -24,8 +24,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const userList = document.getElementById("user-list");
     const createRoomBtn = document.getElementById("create-room-btn");
 
+    const roomSearch = document.getElementById("room-search");
+    const userSearch = document.getElementById("user-search");
+
+    // Room Info Panel
+    const roomInfoPanel = document.getElementById("room-info-panel");
+    const roomCreatedBy = document.getElementById("room-created-by");
+    const roomUsersCombined = document.getElementById("room-users-combined");
+    const closeInfoBtn = document.getElementById("close-info-btn");
+
+
     // ======================================================
-    // JSON FETCH HELPER
+    // JSON Helper
     // ======================================================
     function jsonFetch(url, options = {}) {
         return fetch(url, options)
@@ -36,53 +46,95 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     }
 
+
     // ======================================================
-    // INITIAL UI STATE
+    // INITIAL VIEW
     // ======================================================
-    function showWelcomeScreen() {
+    function showWelcome() {
         welcomeBox.classList.remove("hidden");
         chatLog.classList.add("hidden");
-        joinBanner.classList.add("hidden");
         chatInputRow.classList.add("hidden");
+        joinBanner.classList.add("hidden");
         chatHeader.innerText = "Chat";
     }
+    showWelcome();
 
-    showWelcomeScreen();
 
     // ======================================================
     // LOAD ROOMS
     // ======================================================
+    let allRooms = [];
+
     function loadRooms() {
         jsonFetch("/chat/rooms/").then(data => {
-            roomList.innerHTML = "";
-            (data || []).forEach(room => {
-                roomList.innerHTML += `
-                    <div class="room-item">
-                        <span class="room-name" data-room="${room.name}">${room.name}</span>
-                        ${room.is_user ? "" : `<button data-join="${room.name}">Join</button>`}
-                    </div>`;
-            });
+            allRooms = data || [];
+            renderRooms(allRooms);
         });
     }
 
-    // ======================================================
-    // LOAD USERS
-    // ======================================================
-    function loadUsers() {
-        jsonFetch("/chat/users/").then(data => {
-            userList.innerHTML = "";
-            (data || []).forEach(u => {
-                if (u !== username) {
-                    userList.innerHTML += `
-                        <button class="user-btn" data-dm="${u}">${u}</button>
-                    `;
-                }
-            });
+    function renderRooms(list) {
+        roomList.innerHTML = "";
+        list.forEach(room => {
+            roomList.innerHTML += `
+                <div class="room-item" data-room="${room.name}">
+                    <span>${room.name}</span>
+                    <button class="info-btn" data-info="${room.name}">Info</button>
+                </div>
+            `;
         });
     }
+
+
+    // ======================================================
+    // LOAD USERS WITH PROFILE IMAGE
+    // ======================================================
+    let allUsers = [];
+
+    function loadUsers() {
+        jsonFetch("/chat/users/").then(data => {
+            allUsers = data || [];
+            renderUsers(allUsers);
+        });
+    }
+
+    function renderUsers(list) {
+        userList.innerHTML = "";
+
+        list.forEach(u => {
+            if (u.username === username) return;
+
+            userList.innerHTML += `
+                <button class="user-item" data-dm="${u.username}">
+                    <img src="${u.profile_image}" class="chat-avatar-small">
+                    <span>${u.username}</span>
+                </button>
+            `;
+        });
+    }
+
 
     loadRooms();
     loadUsers();
+
+
+    // ======================================================
+    // ROOM SEARCH
+    // ======================================================
+    roomSearch.addEventListener("input", () => {
+        const q = roomSearch.value.toLowerCase();
+        const filtered = allRooms.filter(r => r.name.toLowerCase().includes(q));
+        renderRooms(filtered);
+    });
+
+    // ======================================================
+    // USER SEARCH
+    // ======================================================
+    userSearch.addEventListener("input", () => {
+        const q = userSearch.value.toLowerCase();
+        const filtered = allUsers.filter(u => u.username.toLowerCase().includes(q));
+        renderUsers(filtered);
+    });
+
 
     // ======================================================
     // SWITCH ROOM
@@ -94,47 +146,57 @@ document.addEventListener("DOMContentLoaded", () => {
         chatHeader.innerText = "Room: " + room;
         welcomeBox.classList.add("hidden");
 
-        jsonFetch(`/chat/rooms/`).then(list => {
+        jsonFetch("/chat/rooms/").then(list => {
             const rm = list.find(r => r.name === room);
+
             if (rm && rm.is_user) {
+                joinBanner.classList.add("hidden");
                 enableChat();
                 loadRoomHistory(room);
             } else {
+                joinBanner.classList.remove("hidden");
                 disableChat();
             }
+
             openWebSocket();
         });
+
+        updateRoomInfo(room);
     }
 
+
     // ======================================================
-    // DM MODE
+    // START DIRECT MESSAGE
     // ======================================================
     function startDM(user) {
         activeMode = "dm";
-        activeTarget = user;
+        activeTarget = user;  // string ALWAYS
 
         chatHeader.innerText = "DM with " + user;
         welcomeBox.classList.add("hidden");
+        joinBanner.classList.add("hidden");
 
         enableChat();
         loadDMHistory(user);
         openWebSocket();
+
+        closeRoomInfo();
     }
+
 
     // ======================================================
     // ENABLE / DISABLE CHAT UI
     // ======================================================
+    function enableChat() {
+        chatLog.classList.remove("hidden");
+        chatInputRow.classList.remove("hidden");
+    }
+
     function disableChat() {
-        joinBanner.classList.remove("hidden");
         chatLog.classList.add("hidden");
         chatInputRow.classList.add("hidden");
     }
 
-    function enableChat() {
-        joinBanner.classList.add("hidden");
-        chatLog.classList.remove("hidden");
-        chatInputRow.classList.remove("hidden");
-    }
 
     // ======================================================
     // LOAD HISTORY
@@ -142,42 +204,59 @@ document.addEventListener("DOMContentLoaded", () => {
     function loadRoomHistory(room) {
         jsonFetch(`/chat/history/${room}/`).then(msgs => {
             chatLog.innerHTML = "";
-            (msgs || []).forEach(m =>
-                chatLog.innerHTML += `<div><b>${m.username}:</b> ${m.message}</div>`
-            );
+            (msgs || []).forEach(m => appendMessage(m.username, m.message));
         });
     }
 
     function loadDMHistory(user) {
         jsonFetch(`/chat/dm/history/${user}/`).then(msgs => {
             chatLog.innerHTML = "";
-            (msgs || []).forEach(m =>
-                chatLog.innerHTML += `<div><b>${m.username}:</b> ${m.message}</div>`
-            );
+            (msgs || []).forEach(m => appendMessage(m.username, m.message));
         });
     }
 
+
     // ======================================================
-    // WEBSOCKET
+    // APPEND MESSAGE
+    // ======================================================
+    function appendMessage(sender, text) {
+        const self = sender === username ? "self" : "";
+
+        chatLog.innerHTML += `
+            <div class="chat-message ${self}">
+                <div class="chat-bubble"><strong>${sender}</strong><br>${text}</div>
+            </div>
+        `;
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+
+    // ======================================================
+    // WEBSOCKET OPEN
     // ======================================================
     function openWebSocket() {
-        if (chatSocket) chatSocket.close();
+        if (!activeTarget) return;
+
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.close();
+        }
 
         const wsUrl =
             activeMode === "room"
-                ? `${scheme}://${location.hostname}/ws/chat/${activeTarget}/`
-                : `${scheme}://${location.hostname}/ws/dm/${activeTarget}/`;
+                ? `${scheme}://${location.host}/ws/chat/${activeTarget}/`
+                : `${scheme}://${location.host}/ws/dm/${activeTarget}/`;
 
         chatSocket = new WebSocket(wsUrl);
 
         chatSocket.onmessage = (e) => {
             const d = JSON.parse(e.data);
-            if (d.message) {
-                chatLog.innerHTML += `<div><b>${d.username}:</b> ${d.message}</div>`;
-                chatLog.scrollTop = chatLog.scrollHeight;
-            }
+
+            if (d.message) appendMessage(d.username, d.message);
+
+            if (d.type === "typing") showTyping(d.username, d.typing);
         };
     }
+
 
     // ======================================================
     // SEND MESSAGE
@@ -185,41 +264,103 @@ document.addEventListener("DOMContentLoaded", () => {
     function sendMessage() {
         if (!msgInput.value.trim() || !chatSocket || chatSocket.readyState !== 1) return;
 
-        chatSocket.send(JSON.stringify({
-            message: msgInput.value.trim(),
-            username
-        }));
-
+        chatSocket.send(JSON.stringify({ message: msgInput.value.trim() }));
         msgInput.value = "";
+
+        showTyping(username, false);
     }
 
     msgBtn.addEventListener("click", sendMessage);
-    msgInput.addEventListener("keyup", (e) => e.key === "Enter" && sendMessage());
+    msgInput.addEventListener("keyup", (e) => {
+        if (e.key === "Enter") sendMessage();
 
-    // ======================================================
-    // CLICK EVENTS — ROOMS + USERS
-    // ======================================================
-    document.addEventListener("click", (event) => {
-        if (event.target.dataset.room) {
-            switchRoom(event.target.dataset.room);
-        }
-        if (event.target.dataset.join) {
-            jsonFetch(`/chat/rooms/join/${event.target.dataset.join}/`).then(() => {
-                loadRooms();
-                switchRoom(event.target.dataset.join);
-            });
-        }
-        if (event.target.dataset.dm) {
-            startDM(event.target.dataset.dm);
+        // Send typing event
+        if (chatSocket?.readyState === 1) {
+            chatSocket.send(JSON.stringify({
+                type: "typing",
+                typing: msgInput.value.length > 0
+            }));
         }
     });
 
+
+    // Typing indicator
+    function showTyping(user, isTyping) {
+        const el = document.getElementById("typing-indicator");
+
+        if (user === username) return;
+
+        if (isTyping) {
+            el.innerText = `${user} is typing…`;
+            el.classList.remove("hidden");
+        } else {
+            el.classList.add("hidden");
+        }
+    }
+
+
     // ======================================================
-    // CREATE ROOM
+    // HANDLE CLICKS (ROOMS / DM / INFO / JOIN)
     // ======================================================
-    createRoomBtn.addEventListener("click", () => {
+    document.addEventListener("click", (event) => {
+        const dmBtn = event.target.closest("[data-dm]");
+        if (dmBtn) return startDM(dmBtn.dataset.dm);
+
+        const roomBtn = event.target.closest("[data-room]");
+        if (roomBtn) return switchRoom(roomBtn.dataset.room);
+
+        const joinBtn = event.target.closest("[data-join]");
+        if (joinBtn) {
+            jsonFetch(`/chat/rooms/join/${joinBtn.dataset.join}/`).then(() => {
+                loadRooms();
+                switchRoom(joinBtn.dataset.join);
+            });
+            return;
+        }
+
+        const infoBtn = event.target.closest("[data-info]");
+        if (infoBtn) return updateRoomInfo(infoBtn.dataset.info);
+    });
+
+
+    // ======================================================
+    // ROOM INFO PANEL
+    // ======================================================
+    function updateRoomInfo(room) {
+        jsonFetch(`/chat/rooms/info/${room}/`).then(data => {
+            if (!data) return;
+
+            roomCreatedBy.innerText = data.created_by || "—";
+            roomUsersCombined.innerHTML = "";
+
+            data.users_all.forEach(u => {
+                roomUsersCombined.innerHTML += `<li>${u}</li>`;
+            });
+
+            roomInfoPanel.classList.remove("hidden");
+        });
+    }
+
+    function closeRoomInfo() {
+        roomInfoPanel.classList.add("hidden");
+    }
+
+    closeInfoBtn.addEventListener("click", closeRoomInfo);
+
+
+    // ======================================================
+    // CREATE ROOM + ENTER KEY
+    // ======================================================
+    createRoomBtn.addEventListener("click", createRoomNow);
+
+    document.getElementById("new-room-name").addEventListener("keyup", (e) => {
+        if (e.key === "Enter") createRoomNow();
+    });
+
+    function createRoomNow() {
         const name = document.getElementById("new-room-name").value.trim();
         if (!name) return;
+
         jsonFetch("/chat/rooms/create/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -228,7 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
             loadRooms();
             switchRoom(name);
         });
-    });
+    }
 
 });
 
