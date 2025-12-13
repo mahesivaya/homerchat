@@ -20,6 +20,7 @@ def register_view(request):
         last_name = request.POST.get("last_name")
         email = request.POST.get("email")
         password = request.POST.get("password")
+        image = request.FILES.get("profile_image")
 
         # ❌ DO NOT call authenticate() here
         # Only create user
@@ -35,7 +36,10 @@ def register_view(request):
             email=email,
             password=password
         )
-        user.save()
+        profile = user.userprofile
+        if image:
+            profile.profile_image = image
+        profile.save()
 
         messages.success(request, "User registered successfully. Please log in.")
         return redirect("login")
