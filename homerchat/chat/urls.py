@@ -6,6 +6,7 @@ urlpatterns = [
     # path('', include('authentication.urls')),
     path("", views.chatapp, name="chatapp"),
         # room management
+    #path("upload/", views.upload_file, name="upload_file"),
     path("rooms/", views.room_list, name="room_list"),
     path("room/users/<str:room_name>/", views.room_users, name="room_users"),
     path("rooms/create/", views.create_room, name="create_room"),

@@ -1,90 +1,92 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Welcome to HomerChat{% endblock %}
+{% block title %}HomerChat{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/home.css' %}">
 <link rel="stylesheet" href="{% static 'css/chatapp.css' %}">
 {% endblock %}
 
 {% block content %}
 
-<!-- Pass Django username to JS -->
 <script>
     window.CHAT_USERNAME = "{{ request.user.username }}";
 </script>
 
-<div class="chat-layout">
+<div class="chat-container">
 
-    <!-- ===================== LEFT SIDEBAR ===================== -->
-    <div class="chat-sidebar">
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="sidebar">
 
-        <h3>Create Room</h3>
-
-        <div class="create-room-box">
-            <input id="new-room-name" type="text" placeholder="Room name">
-            <button id="create-room-btn">+</button>
+        <div class="sidebar-section">
+            <h3>Create Room</h3>
+            <div class="room-create">
+                <input id="new-room-name" type="text" placeholder="Room name">
+                <button id="create-room-btn">+</button>
+            </div>
         </div>
 
-        <h3>Rooms</h3>
-        <input id="room-search" type="text" placeholder="Search rooms..." class="search-bar">
-        <div id="room-list" class="list-box"></div>
-
-        <hr style="margin: 15px 0;">
-
-        <h3>Users</h3>
-        <input id="user-search" type="text" placeholder="Search users..." class="search-bar">
-        <div id="user-list" class="list-box"></div>
-
-    </div>
-
-
-    <!-- ===================== MAIN CHAT AREA ===================== -->
-    <div class="chat-wrapper">
-
-        <h2 id="chat-header" class="chat-title">Chat</h2>
-
-        <!-- Welcome screen -->
-        <div id="welcome-text" class="welcome-box">
-            👋 Welcome to HomerChat!
-            <br>
-            Select a room or user from the sidebar to begin chatting.
+        <div class="sidebar-section">
+            <h3>Rooms</h3>
+            <input id="room-search" type="text" class="search-input" placeholder="Search rooms...">
+            <div id="room-list" class="item-list"></div>
         </div>
 
-        <!-- Shown only if user is NOT in room -->
+        <div class="sidebar-section">
+            <h3>Users</h3>
+            <input id="user-search" type="text" class="search-input" placeholder="Search users...">
+            <div id="user-list" class="item-list"></div>
+        </div>
+
+    </aside>
+
+
+    <!-- ===================== CHAT PANEL ===================== -->
+    <main class="chat-panel">
+
+        <header class="chat-header">
+            <h2 id="chat-header-title">Welcome to HomerChat</h2>
+        </header>
+
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="center-message">
+            👋 Select a room to join or click a user to start a direct chat.
+        </div>
+
+        <!-- Join Banner -->
         <div id="join-banner" class="join-banner hidden">
-            <button id="join-room-btn">Join this room</button>
+            <button id="join-room-btn">Join Room</button>
         </div>
 
-        <!-- Chat messages -->
-        <div id="chat-log" class="chat-box hidden"></div>
+        <!-- Chat Log -->
+        <div id="chat-log" class="chat-log hidden"></div>
 
-        <!-- Chat input -->
-        <div id="chat-input-row" class="chat-input-row hidden">
-            <input id="chat-message-input" type="text" placeholder="Type a message..." class="chat-input">
-            <button id="chat-message-submit" class="chat-send-btn">Send</button>
-        </div>
+        <!-- Input -->
+        <footer id="chat-input-row" class="chat-input-row hidden">
+            <input id="chat-message-input" type="text" placeholder="Type a message...">
+            <button id="chat-message-submit">Send</button>
+        </footer>
 
-    </div>
+    </main>
 
 
     <!-- ===================== ROOM INFO PANEL ===================== -->
-    <div id="room-info-panel" class="room-info hidden">
+    <aside id="room-info-panel" class="room-info hidden">
+        <div class="room-info-header">
+            <h3>Room Info</h3>
+            <button id="close-info-btn" class="close-btn">✕</button>
+        </div>
 
-        <h3>Room Info</h3>
+        <p><b>Created By:</b> <span id="room-created-by"></span></p>
 
-        <p><b>Created by:</b> <span id="room-created-by"></span></p>
+        <p><b>Members:</b></p>
+        <ul id="room-users"></ul>
 
-        <p><b>Users in room:</b></p>
-        <ul id="room-users-combined"></ul>
-
-        <button id="close-info-btn" class="close-info">Close</button>
-    </div>
+        <div id="room-info-actions"></div>
+    </aside>
 
 </div>
 
-<!-- Chat JS (loaded at the end to avoid DOM issues) -->
 <script src="{% static 'js/chatapp.js' %}"></script>
 
 {% endblock %}

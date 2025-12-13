@@ -24,14 +24,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-on-bh9+u-s(+(s*5ge)!m-cli#i0c-4x*fh77gb4a(t!(jmany'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     "homerchat.com",
     "www.homerchat.com",
-    "35.153.143.170",
-    "localhost",
-    "127.0.0.1"
 ]
 
 
@@ -79,6 +76,20 @@ CSRF_TRUSTED_ORIGINS = [
     "https://homerchat.com",
     "https://www.homerchat.com",
 ]
+
+SESSION_TIMEOUT = 300  # 5 minutes of inactivity
+SESSION_COOKIE_AGE = 86400  # Cookie valid 1 day (not related)
+SESSION_SAVE_EVERY_REQUEST = False
+
+
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = "None"
+
+SESSION_COOKIE_DOMAIN = "homerchat.com"
+
 
 
 TEMPLATES = [
@@ -156,7 +167,8 @@ STATICFILES_DIRS = [
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 LOG_DIR = os.path.join(BASE_DIR, "logs")
 if not os.path.exists(LOG_DIR):
